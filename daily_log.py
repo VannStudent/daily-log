@@ -17,18 +17,18 @@ def stats():
     start = now.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
     try:
         c = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=10)
-        q = "select count(*), coalesce(sum(total_tokens),0) from usage_logs where timestamp >= ? and telegram_id not in (?,?,?)"
-        n, tok = c.execute(q, (start, *INTERNAL)).fetchone(); c.close()
+        q = "select count(*) from usage_logs where timestamp >= ? and telegram_id not in (?,?,?)"
+        n = c.execute(q, (start, *INTERNAL)).fetchone()[0]; c.close()
     except Exception as e:
-        n, tok = "?", "?"
+        n = "?"
     svc = {s: sh("systemctl", "is-active", s) or "unknown" for s in SVCS}
     up = sh("uptime", "-p"); load = open("/proc/loadavg").read().split()[:3]
     mem = sh("sh", "-c", "free -m | awk '/Mem/{print $3\"/\"$2\" MB\"}'")
     disk = sh("sh", "-c", "df -h / | awk 'NR==2{print $3\"/\"$2\" (\"$5\")\"}'")
-    return now, n, tok, svc, up, load, mem, disk
+    return now, n, svc, up, load, mem, disk
 
 def snapshot(i, total):
-    now, n, tok, svc, up, load, mem, disk = stats()
+    now, n, svc, up, load, mem, disk = stats()
     day = now.strftime("%Y-%m-%d"); path = f"logs/{now:%Y}/{now:%m}/{day}.md"
     full = os.path.join(REPO, path); os.makedirs(os.path.dirname(full), exist_ok=True)
     new = not os.path.exists(full)
@@ -37,7 +37,7 @@ def snapshot(i, total):
         f.write(f"\n## {now:%H:%M} WIB (snapshot {i}/{total})\n")
         f.write(f"- uptime: {up}\n- load: {' '.join(load)}\n- mem: {mem}\n- disk: {disk}\n")
         f.write("- services: " + ", ".join(f"{k}={v}" for k, v in svc.items()) + "\n")
-        f.write(f"- API requests today: {n}, tokens today: {tok}\n")
+        f.write(f"- API requests today: {n}\n")
     sh("git", "add", path)
     sh("git", "commit", "-q", "-m", f"log: {day} {now:%H:%M} WIB snapshot {i}/{total}")
 

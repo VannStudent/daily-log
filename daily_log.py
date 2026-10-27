@@ -6,7 +6,15 @@ WIB = timezone(timedelta(hours=7))
 REPO = os.path.dirname(os.path.abspath(__file__))
 DB = "/home/ubuntu/tele-apibot/tele_proxy.db"
 SVCS = ["tele-apibot", "cloudflared", "hermes-gateway", "9router"]
-INTERNAL = (-2, -3, int(os.environ.get("ADMIN_TG_ID", "0")))
+def _env(k, d=""):
+    # nilai pribadi dibaca dari .env lokal (gitignored), tidak di-commit
+    try:
+        for ln in open(os.path.join(REPO, ".env")):
+            if ln.startswith(k + "="): return ln.split("=", 1)[1].strip()
+    except OSError: pass
+    return os.environ.get(k, d)
+
+INTERNAL = (-2, -3, int(_env("ADMIN_TG_ID", "0")))
 
 def sh(*a):
     return subprocess.run(a, capture_output=True, text=True, cwd=REPO).stdout.strip()
